@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fancy PEMDAS Calculator</title>
+<style>
+/* --- Base Reset --- */
+* { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+body { display:flex; justify-content:center; align-items:center; height:100vh; background:linear-gradient(135deg,#74ebd5,#acb6e5); }
+
+/* --- Calculator Card --- */
+.card { background:rgba(255,255,255,0.15); padding:50px 40px; border-radius:25px; backdrop-filter:blur(20px); box-shadow:0 20px 50px rgba(0,0,0,0.2); width:420px; text-align:center; position:relative; overflow:hidden; border:2px solid rgba(255,255,255,0.1); }
+.card::before { content:""; position:absolute; top:0; left:0; width:100%; height:100%; background:radial-gradient(circle at top left, rgba(255,255,255,0.05), transparent 70%); border-radius:25px; z-index:-1; }
+body::before { content:""; position:fixed; top:0; left:0; width:100%; height:100%; background:linear-gradient(120deg, rgba(255,255,255,0.05), rgba(0,0,0,0.05)); z-index:-1; }
+body::after { content:""; position:fixed; top:0; left:0; width:100%; height:100%; background:radial-gradient(circle, rgba(255,255,255,0.05), transparent 70%); z-index:-2; }
+
+/* --- Display --- */
+#display { min-height:60px; font-size:2rem; color:#fff; font-weight:700; margin-bottom:20px; text-shadow:0 2px 5px rgba(0,0,0,0.4),0 0 10px rgba(255,255,255,0.2); letter-spacing:1px; transition:all 0.3s ease; }
+
+/* --- Input Field --- */
+input[type="text"] { padding:15px 20px; margin:10px 0; border-radius:15px; border:2px solid rgba(255,255,255,0.5); width:240px; text-align:center; font-size:1.1rem; background:rgba(255,255,255,0.2); color:#fff; transition:all 0.3s ease; }
+input[type="text"]:focus { outline:none; border-color:#fff; box-shadow:0 0 15px rgba(255,255,255,0.5); }
+input::placeholder { color: rgba(255,255,255,0.6); font-style:italic; }
+
+/* --- Number Buttons --- */
+#numbers button {padding:15px 25px; margin:8px; border:none; border-radius:15px; cursor:pointer; font-weight:700; font-size:1.1rem; color:#fff; background:rgba(255,255,255,0.25); box-shadow:0 5px 15px rgba(0,0,0,0.25),0 0 10px rgba(255,255,255,0.1); transition:all 0.3s ease; position:relative; }
+#numbers {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap; /* ✅ fixes the one-line issue */
+}
+
+#numbers button:hover { transform:scale(1.1); }
+#numbers button:active { transform:scale(0.95); }
+
+/* --- Yellow Flash --- */
+@keyframes yellowFlash { 0%{box-shadow:0 0 0 rgba(255,255,0,0);} 50%{box-shadow:0 0 20px 10px rgba(255,255,0,0.8);} 100%{box-shadow:0 0 0 rgba(255,255,0,0);} }
+.flash { animation:yellowFlash 0.4s ease; }
+
+/* --- Operator Buttons --- */
+#operatorButtons .btn { padding:15px 25px; margin:8px; border:none; border-radius:15px; cursor:pointer; font-weight:700; font-size:1.1rem; background:linear-gradient(45deg,#ff758c,#ff7eb3); color:#fff; box-shadow:0 5px 15px rgba(0,0,0,0.2); transition:all 0.3s ease; position:relative; }
+#operatorButtons .btn:hover { transform:scale(1.1); }
+#operatorButtons .btn:active { transform:scale(0.95); }
+#equalBtn { background:linear-gradient(45deg,#43e97b,#38f9d7); color:#000; }
+
+/* --- Reset Button (Bigger) --- */
+.btn-reset { background:linear-gradient(45deg,#f7971e,#ffd200); color:#000; font-size:1.3rem; padding:18px 35px; transition:all 0.3s ease; }
+.btn-reset:hover { transform:scale(1.05); }
+.btn-reset:active { transform:scale(0.95); }
+
+/* --- Layout --- */
+#operatorButtons { margin-top:20px; display:flex; justify-content:center; flex-wrap:wrap; }
+@media (max-width:480px){ .card{width:90%;padding:30px 20px;} input[type="text"]{width:200px;} #numbers button,#operatorButtons .btn{padding:12px 20px;font-size:1rem;} .btn-reset{font-size:1.2rem;padding:16px 30px;} }
+
+</style>
+</head>
+<body>
+<div class="card">
+  <div id="display">Enter first number</div>
+
+  <div id="numbers">
+    <button data-key="1">1</button>
+    <button data-key="2">2</button>
+    <button data-key="3">3</button>
+    <button data-key="4">4</button>
+    <button data-key="5">5</button>
+    <button data-key="6">6</button>
+    <button data-key="7">7</button>
+    <button data-key="8">8</button>
+    <button data-key="9">9</button>
+    <button data-key="0">0</button>
+  </div>
+
+  <input type="text" id="userInput" placeholder="Enter number">
+
+  <div id="operatorButtons" style="display:none;">
+    <button class="btn" onclick="chooseOperator('+',this)">+</button>
+    <button class="btn" onclick="chooseOperator('-',this)">-</button>
+    <button class="btn" onclick="chooseOperator('×',this)">×</button>
+    <button class="btn" onclick="chooseOperator('÷',this)">÷</button>
+    <button class="btn" id="equalBtn" onclick="chooseOperator('=',this)" style="display:none">=</button>
+  </div>
+
+  <div style="margin-top:15px;">
+    <button class="btn btn-reset" id="resetBtn" onclick="resetCalculator(this)">C</button>
+    <button class="btn btn-reset" id="btn" onclick="enter()"> enter </button>
+  </div>
+</div>
+
+<script>
+let numbers = [];
+let operators = [];
+let step = 0;
+let firstOperationDone = false;
+
+const display = document.getElementById('display');
+const userInput = document.getElementById('userInput');
+const operatorButtons = document.getElementById('operatorButtons');
+const equalBtn = document.getElementById('equalBtn');
+const numberButtonsDiv = document.getElementById('numbers');
+const resetBtn = document.getElementById('resetBtn');
+const enterBtn = document.getElementById('btn');
+const numberButtons = document.querySelectorAll('#numbers button');
+
+// Flash yellow effect
+function flashButton(button) {
+  button.classList.add('flash');
+  setTimeout(() => button.classList.remove('flash'), 400);
+}
+
+// Show input, numbers, and C + enter button
+function showInputElements() {
+  userInput.style.display = "inline-block";
+  numberButtonsDiv.style.display = "flex";
+  resetBtn.style.display = "inline-block";
+  enterBtn.style.display = "inline-block";
+}
+
+// Hide input, numbers, and C + enter button
+function hideInputElements() {
+  userInput.style.display = "none";
+  numberButtonsDiv.style.display = "none";
+  resetBtn.style.display = "none";
+  enterBtn.style.display = "none";
+}
+
+// Append number to input
+function appendNumber(num) {
+  userInput.value += num;
+  userInput.focus();
+}
+
+// Update display
+function updateDisplay(msg) {
+  display.innerText = msg;
+}
+
+// Submit number from input
+function submitNumber() {
+  const val = userInput.value.trim();
+  if (val === "" || isNaN(val)) {
+    updateDisplay("Enter valid number");
+    return false;
+  }
+  return Number(val);
+}
+
+// Handle Enter (keyboard or button)
+function handleEnter() {
+  const num = submitNumber();
+  if (num === false) return;
+  numbers.push(num);
+  step = 1;
+  updateDisplay(`Number entered: ${num}. Choose operator`);
+  operatorButtons.style.display = "block";
+  hideInputElements();
+  equalBtn.style.display = firstOperationDone ? "inline-block" : "none";
+  userInput.value = "";
+}
+
+// Choose operator
+function chooseOperator(op, button) {
+  flashButton(button);
+
+  const val = userInput.value.trim();
+  if (val !== "" && !isNaN(val)) {
+    numbers.push(Number(val));
+    userInput.value = "";
+  }
+
+  hideInputElements();
+
+  if (op === '=') {
+    if (numbers.length === 0) return;
+    const result = calculatePEMDAS(numbers, operators);
+    updateDisplay(`✅ Result: ${result}`);
+    operatorButtons.style.display = "none";
+    return;
+  }
+
+  operators.push(op);
+  step = 0;
+  updateDisplay(`Operator ${op} chosen. Enter next number`);
+  operatorButtons.style.display = "none";
+
+  // Show input again for next number
+  setTimeout(() => {
+    showInputElements();
+  }, 300);
+  firstOperationDone = true;
+}
+
+// PEMDAS calculation
+function calculatePEMDAS(nums, ops) {
+  let n = nums.slice();
+  let o = ops.slice();
+  for (let i = 0; i < o.length; i++) {
+    if (o[i] === '×' || o[i] === '÷') {
+      n[i] = (o[i] === '×') ? n[i] * n[i + 1] : n[i] / n[i + 1];
+      n.splice(i + 1, 1);
+      o.splice(i, 1);
+      i--;
+    }
+  }
+  for (let i = 0; i < o.length; i++) {
+    if (o[i] === '+') { n[i] = n[i] + n[i + 1]; n.splice(i + 1, 1); o.splice(i, 1); i--; }
+    if (o[i] === '-') { n[i] = n[i] - n[i + 1]; n.splice(i + 1, 1); o.splice(i, 1); i--; }
+  }
+  return n[0];
+}
+
+// Reset after calculation
+function resetAfterCalculation(val) {
+  numbers = [val];
+  operators = [];
+  step = 1;
+  operatorButtons.style.display = "block";
+  equalBtn.style.display = "inline-block";
+  showInputElements();
+}
+
+// Reset calculator
+function resetCalculator(button) {
+  flashButton(button);
+  numbers = [];
+  operators = [];
+  step = 0;
+  firstOperationDone = false;
+  userInput.value = "";
+  operatorButtons.style.display = "none";
+  equalBtn.style.display = "none";
+  showInputElements();
+  updateDisplay("Enter first number");
+}
+
+// --- Button click handlers ---
+numberButtons.forEach(btn => {
+  btn.addEventListener('click', () => {
+    flashButton(btn);
+    appendNumber(btn.dataset.key);
+  });
+});
+
+enterBtn.addEventListener('click', handleEnter);
+
+// --- Keyboard support (only one listener, no duplicates) ---
+document.addEventListener('keydown', e => {
+  if (/^\d$/.test(e.key)) {
+    appendNumber(e.key);
+    const btn = document.querySelector(`#numbers button[data-key="${e.key}"]`);
+    if (btn) flashButton(btn);
+    e.preventDefault();
+  } else if (e.key === 'Enter') {
+    handleEnter();
+  }
+});
+
+
+
+
+</script>
+</body>
+</html>
