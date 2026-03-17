@@ -1,5 +1,8 @@
 # Fancy PEMDAS Calculator
 
+to access this website on any device, use the link given below:
+
+ 
 A stylish, interactive web-based calculator that follows PEMDAS (Order of Operations) rules. Built using HTML, CSS, and JavaScript, this calculator combines functionality with a modern glassmorphism UI.
 
 🚀 Features
